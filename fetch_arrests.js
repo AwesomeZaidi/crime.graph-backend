@@ -14,7 +14,6 @@ const fetchArrests = async () => {
   while (true) {
     const url = `https://data.cityofchicago.org/resource/dpt3-jri9.json?$$app_token=${appToken}&$limit=${limit}&$offset=${offset}`;
 
-    // Wrap the fetch operation with retry
     const response = await retry(async () => {
       const res = await fetch(url);
       if (!res.ok) {
@@ -22,8 +21,8 @@ const fetchArrests = async () => {
       }
       return res;
     }, {
-      retries: 3, // Number of retries
-      minTimeout: 1000, // Minimum time between retries (in milliseconds)
+      retries: 3,
+      minTimeout: 1000,
     });
 
     const arrests = await response.json();
@@ -49,7 +48,12 @@ const chunkArray = (array, chunkSize) => {
 };
 
 const storeArrestsInMongoDB = async (arrests) => {
-  const client = new MongoClient(mongoDBConnectionString, { useNewUrlParser: true, useUnifiedTopology: true });
+  const client = new MongoClient(mongoDBConnectionString, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 30000, // Increased server selection timeout
+    socketTimeoutMS: 60000, // Increased socket timeout
+  });
 
   if (!Array.isArray(arrests)) {
     throw new TypeError('Arrests must be an array');
@@ -57,10 +61,9 @@ const storeArrestsInMongoDB = async (arrests) => {
 
   try {
     await client.connect();
-    const db = client.db('your_db_name');
+    const db = client.db('data_db');
     const arrestsCollection = db.collection('arrests');
 
-    // Prepare bulk operations
     const arrestChunks = chunkArray(arrests, 1000);
 
     for (const chunk of arrestChunks) {
@@ -72,7 +75,6 @@ const storeArrestsInMongoDB = async (arrests) => {
         },
       }));
 
-      // Execute bulk operations
       await arrestsCollection.bulkWrite(bulkOps);
     }
   } finally {
