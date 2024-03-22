@@ -64,7 +64,7 @@ const storeArrestsInMongoDB = async (arrests) => {
     const db = client.db('data_db');
     const arrestsCollection = db.collection('arrests');
 
-    const arrestChunks = chunkArray(arrests, 1000);
+    const arrestChunks = chunkArray(arrests, 50000);
 
     for (const chunk of arrestChunks) {
       const bulkOps = chunk.map((arrest) => ({
